@@ -1,0 +1,8 @@
+{
+  "name": "RanKUs",
+  "description": "Aplicativo gamer para pontuação diária de Termo Quarteto, Globle e SizeItUp com leaderboards e estatísticas.",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}

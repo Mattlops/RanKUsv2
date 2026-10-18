@@ -1,0 +1,72 @@
+{
+  "entities": {
+    "User": {
+      "title": "User",
+      "description": "User profile in RanKUs gamer community",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string", "description": "Auth UID" },
+        "nickname": { "type": "string", "description": "Gamer nickname" },
+        "email": { "type": "string", "description": "Gamer email" },
+        "bio": { "type": "string", "description": "Gamer bio" },
+        "avatarUrl": { "type": "string", "description": "Avatar image url" },
+        "favoriteGame": { "type": "string", "description": "Favorite puzzle game" },
+        "totalScore": { "type": "integer", "description": "Cumulative score" },
+        "streakDays": { "type": "integer", "description": "Days in a row" },
+        "matchesPlayed": { "type": "integer", "description": "Total matches played" },
+        "createdAt": { "type": "string", "format": "date-time", "description": "Creation timestamp via serverTimestamp" },
+        "updatedAt": { "type": "string", "format": "date-time", "description": "Update timestamp via serverTimestamp" }
+      },
+      "required": ["userId", "nickname", "createdAt"]
+    },
+    "Score": {
+      "title": "Score",
+      "description": "Daily game score submission",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string", "description": "Author UID" },
+        "nickname": { "type": "string", "description": "Gamer nickname" },
+        "avatarUrl": { "type": "string", "description": "Avatar url" },
+        "gameType": { "type": "string", "description": "Game type (termo, globle, sizeitup)" },
+        "dateKey": { "type": "string", "description": "Date of the match in YYYY-MM-DD" },
+        "score": { "type": "integer", "description": "Calculated score up to 100" },
+        "rawText": { "type": "string", "description": "Raw shared puzzle string" },
+        "details": { "type": "string", "description": "Decoded score summary" },
+        "createdAt": { "type": "string", "format": "date-time", "description": "Submission timestamp via serverTimestamp" }
+      },
+      "required": ["userId", "gameType", "dateKey", "score", "createdAt"]
+    },
+    "Activity": {
+      "title": "Activity",
+      "description": "Social activity feed item with reactions",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string", "description": "Author UID" },
+        "playerName": { "type": "string", "description": "Author display name" },
+        "avatarUrl": { "type": "string", "description": "Avatar url" },
+        "gameName": { "type": "string", "description": "Game name" },
+        "gameLetter": { "type": "string", "description": "Game identifier letter" },
+        "pointsEarned": { "type": "integer", "description": "Earned score" },
+        "fireReactions": { "type": "integer", "description": "Fire reactions count" },
+        "applauseReactions": { "type": "integer", "description": "Applause reactions count" },
+        "targetReactions": { "type": "integer", "description": "Target reactions count" },
+        "createdAt": { "type": "string", "format": "date-time", "description": "Creation timestamp via serverTimestamp" }
+      },
+      "required": ["userId", "playerName", "gameName", "pointsEarned", "createdAt"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": { "$ref": "#/entities/User" },
+      "description": "Collection of user profiles"
+    },
+    "/scores/{scoreId}": {
+      "schema": { "$ref": "#/entities/Score" },
+      "description": "Collection of daily score records"
+    },
+    "/activities/{activityId}": {
+      "schema": { "$ref": "#/entities/Activity" },
+      "description": "Public community activity feed"
+    }
+  }
+}
