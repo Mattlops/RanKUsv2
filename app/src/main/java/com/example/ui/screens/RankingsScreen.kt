@@ -30,11 +30,15 @@ import androidx.compose.material.icons.filled.ExpandLess
 import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material.icons.filled.FormatListNumbered
 import androidx.compose.material.icons.filled.Help
+import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.MilitaryTech
 import androidx.compose.material.icons.filled.RocketLaunch
+import androidx.compose.material.icons.filled.Shield
 import androidx.compose.material.icons.filled.ShowChart
 import androidx.compose.material.icons.filled.Timer
 import androidx.compose.material.icons.filled.TrendingUp
+import androidx.compose.material.icons.filled.Visibility
+import androidx.compose.material.icons.filled.VisibilityOff
 import androidx.compose.material.icons.filled.WorkspacePremium
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -42,6 +46,8 @@ import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.Surface
+import androidx.compose.material3.Switch
+import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -96,12 +102,28 @@ fun RankingsScreen(
     getEvolutionData: (gameFilter: String, timeFilter: String) -> List<WeeklyComparisonDay>,
     onPlayClick: () -> Unit,
     onCadastrarClick: () -> Unit = {},
+    isAdmin: Boolean = false,
+    isRankingHidden: Boolean = false,
+    onToggleRankingHidden: (Boolean) -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     var selectedGamePill by remember { mutableStateOf("Todos os Jogos") }
     var selectedTimeRange by remember { mutableStateOf("Semana") }
     var expandedPlayerId by remember { mutableStateOf<String?>(null) }
     var showRulesModal by remember { mutableStateOf(false) }
+
+    // If ranking is hidden and user is NOT admin, show suspense screen
+    if (!isAdmin && isRankingHidden) {
+        SuspenseRankingScreen(
+            onPlayClick = onPlayClick,
+            onRulesClick = { showRulesModal = true },
+            modifier = modifier
+        )
+        if (showRulesModal) {
+            RulesModalDialog(onDismiss = { showRulesModal = false })
+        }
+        return
+    }
 
     // Dynamic evolution data based on chosen Game and Time filter
     val currentEvolutionData = remember(selectedGamePill, selectedTimeRange) {
@@ -124,6 +146,17 @@ fun RankingsScreen(
             .padding(horizontal = 16.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
+        // Admin Suspense Mode Control Banner
+        if (isAdmin) {
+            item {
+                Spacer(modifier = Modifier.height(4.dp))
+                AdminSuspenseControlCard(
+                    isRankingHidden = isRankingHidden,
+                    onToggleRankingHidden = onToggleRankingHidden
+                )
+            }
+        }
+
         item {
             Spacer(modifier = Modifier.height(4.dp))
             // Season Header & Rules modal button
@@ -1230,11 +1263,11 @@ private fun RulesModalDialog(onDismiss: () -> Unit) {
                 // 2. Globle
                 RuleSectionBox(
                     title = "Globle (Geografia)",
-                    formula = "SE(Tentativas ≤ 2; 100; MÁXIMO(10; 100 - ((Tentativas - 2) × 3)))",
+                    formula = "SE(Tentativas ≤ 2; 100; MÁXIMO(10; 100 - ((Tentativas - 2) × 5)))",
                     rules = listOf(
-                        "1 a 2 chutes: 100 pontos garantidos",
-                        "A partir do 3º chute: -3 pontos por tentativa extra",
-                        "Piso garantido de 10 pontos ao acertar o país"
+                        "1 a 2 palpites: 100 pontos garantidos",
+                        "A partir do 3º palpite: -5 pontos por tentativa extra",
+                        "Piso garantido de 10 pontos em 20 palpites ao acertar o país"
                     ),
                     color = ElectricCyan
                 )
@@ -1317,5 +1350,335 @@ private fun RuleSectionBox(
         rules.forEach { r ->
             Text(text = "• $r", fontSize = 10.sp, color = TextSecondary)
         }
+    }
+}
+
+@Composable
+fun AdminSuspenseControlCard(
+    isRankingHidden: Boolean,
+    onToggleRankingHidden: (Boolean) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Box(
+        modifier = modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(16.dp))
+            .background(SurfaceContainerHigh)
+            .border(
+                width = 1.5.dp,
+                brush = Brush.horizontalGradient(
+                    colors = if (isRankingHidden) listOf(Color(0xFFFF3366), NeonViolet) else listOf(ElectricCyan, NeonGreen)
+                ),
+                shape = RoundedCornerShape(16.dp)
+            )
+            .padding(14.dp)
+            .testTag("admin_suspense_card")
+    ) {
+        Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .size(32.dp)
+                            .clip(CircleShape)
+                            .background(if (isRankingHidden) Color(0x33FF3366) else NeonViolet.copy(alpha = 0.2f)),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            imageVector = if (isRankingHidden) Icons.Default.VisibilityOff else Icons.Default.Shield,
+                            contentDescription = null,
+                            tint = if (isRankingHidden) Color(0xFFFF5577) else ElectricCyan,
+                            modifier = Modifier.size(18.dp)
+                        )
+                    }
+                    Column {
+                        Text(
+                            text = "PAINEL DO ADMINISTRADOR",
+                            fontSize = 10.sp,
+                            fontWeight = FontWeight.Black,
+                            letterSpacing = 1.sp,
+                            color = NeonViolet
+                        )
+                        Text(
+                            text = "Modo Suspense (Esconder Ranking)",
+                            fontSize = 13.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = TextPrimary
+                        )
+                    }
+                }
+
+                // Status Badge
+                Box(
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(8.dp))
+                        .background(if (isRankingHidden) Color(0x33FF3366) else Color(0x3300FF88))
+                        .padding(horizontal = 8.dp, vertical = 4.dp)
+                ) {
+                    Text(
+                        text = if (isRankingHidden) "OCULTO" else "VISÍVEL",
+                        fontSize = 10.sp,
+                        fontWeight = FontWeight.Black,
+                        color = if (isRankingHidden) Color(0xFFFF5577) else NeonGreen
+                    )
+                }
+            }
+
+            Text(
+                text = if (isRankingHidden) {
+                    "🔴 O ranking está escondido para os outros jogadores. Eles verão a tela temática de suspense da Grande Final. Apenas você consegue ver as pontuações e posições completas."
+                } else {
+                    "🟢 O ranking está visível para todos os competidores. Ative o modo suspense nos dias finais para criar expectativa!"
+                },
+                fontSize = 12.sp,
+                color = TextSecondary,
+                lineHeight = 16.sp
+            )
+
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(12.dp))
+                    .background(DarkBgBase)
+                    .clickable { onToggleRankingHidden(!isRankingHidden) }
+                    .padding(horizontal = 12.dp, vertical = 8.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    Icon(
+                        imageVector = if (isRankingHidden) Icons.Default.Visibility else Icons.Default.VisibilityOff,
+                        contentDescription = null,
+                        tint = if (isRankingHidden) NeonGreen else Color(0xFFFF5577),
+                        modifier = Modifier.size(16.dp)
+                    )
+                    Text(
+                        text = if (isRankingHidden) "Revelar Ranking para todos" else "Esconder Ranking dos Usuários",
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = TextPrimary
+                    )
+                }
+
+                Switch(
+                    checked = isRankingHidden,
+                    onCheckedChange = { onToggleRankingHidden(it) },
+                    modifier = Modifier.testTag("admin_toggle_suspense_switch"),
+                    colors = SwitchDefaults.colors(
+                        checkedThumbColor = Color(0xFFFF5577),
+                        checkedTrackColor = Color(0x66FF3366),
+                        uncheckedThumbColor = NeonGreen,
+                        uncheckedTrackColor = SurfaceContainerHighest
+                    )
+                )
+            }
+        }
+    }
+}
+
+@Composable
+fun SuspenseRankingScreen(
+    onPlayClick: () -> Unit,
+    onRulesClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Column(
+        modifier = modifier
+            .fillMaxSize()
+            .background(DarkBgBase)
+            .verticalScroll(rememberScrollState())
+            .padding(20.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(20.dp)
+    ) {
+        Spacer(modifier = Modifier.height(8.dp))
+
+        // Season Badge
+        Box(
+            modifier = Modifier
+                .clip(RoundedCornerShape(20.dp))
+                .background(NeonViolet.copy(alpha = 0.2f))
+                .border(1.dp, NeonViolet, RoundedCornerShape(20.dp))
+                .padding(horizontal = 14.dp, vertical = 6.dp)
+        ) {
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                Box(
+                    modifier = Modifier
+                        .size(8.dp)
+                        .clip(CircleShape)
+                        .background(Color(0xFFFF3366))
+                )
+                Text(
+                    text = "TEMPORADA 2026 · GRANDE FINAL",
+                    fontSize = 11.sp,
+                    fontWeight = FontWeight.Black,
+                    letterSpacing = 1.sp,
+                    color = ElectricCyan
+                )
+            }
+        }
+
+        // Suspense Hero Card
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clip(RoundedCornerShape(24.dp))
+                .background(SurfaceContainerHigh)
+                .border(
+                    width = 2.dp,
+                    brush = Brush.linearGradient(
+                        colors = listOf(Color(0xFFFF3366), NeonViolet, ElectricCyan)
+                    ),
+                    shape = RoundedCornerShape(24.dp)
+                )
+                .padding(24.dp)
+                .testTag("suspense_ranking_screen")
+        ) {
+            Column(
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(16.dp)
+            ) {
+                // Lock Icon with glowing background
+                Box(
+                    modifier = Modifier
+                        .size(80.dp)
+                        .clip(CircleShape)
+                        .background(
+                            Brush.radialGradient(
+                                colors = listOf(NeonViolet.copy(alpha = 0.5f), Color.Transparent)
+                            )
+                        )
+                        .border(1.5.dp, NeonViolet, CircleShape),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Lock,
+                        contentDescription = "Ranking Congelado",
+                        tint = TrophyGold,
+                        modifier = Modifier.size(42.dp)
+                    )
+                }
+
+                Text(
+                    text = "RANKING CONGELADO!",
+                    fontSize = 24.sp,
+                    fontWeight = FontWeight.Black,
+                    letterSpacing = 1.sp,
+                    textAlign = TextAlign.Center,
+                    color = TextPrimary
+                )
+
+                Text(
+                    text = "Modo Suspense Ativado para a Grande Final 🏆",
+                    fontSize = 14.sp,
+                    fontWeight = FontWeight.Bold,
+                    textAlign = TextAlign.Center,
+                    color = ElectricCyan
+                )
+
+                HorizontalDivider(color = OutlineBorder.copy(alpha = 0.4f))
+
+                Text(
+                    text = "Os resultados oficiais estão temporariamente ocultos para preservar a surpresa dos finalistas!\n\nQuem levará o título de Campeão do RanKUs? A apuração final será revelada em breve!",
+                    fontSize = 13.sp,
+                    color = TextSecondary,
+                    textAlign = TextAlign.Center,
+                    lineHeight = 19.sp
+                )
+
+                // Callout Alert
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(12.dp))
+                        .background(SurfaceContainer)
+                        .border(1.dp, NeonGreen.copy(alpha = 0.4f), RoundedCornerShape(12.dp))
+                        .padding(14.dp)
+                ) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(10.dp)
+                    ) {
+                        Text(text = "🔥", fontSize = 20.sp)
+                        Column {
+                            Text(
+                                text = "Não pare de jogar!",
+                                fontSize = 12.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = NeonGreen
+                            )
+                            Text(
+                                text = "Continue registrando seus resultados diários normalmente no menu Início. Seus pontos continuam sendo computados com precisão no sistema!",
+                                fontSize = 11.sp,
+                                color = TextSecondary,
+                                lineHeight = 15.sp
+                            )
+                        }
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(4.dp))
+
+                // Primary Play Button
+                Button(
+                    onClick = onPlayClick,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(50.dp)
+                        .testTag("suspense_play_button"),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = NeonGreen,
+                        contentColor = Color.Black
+                    ),
+                    shape = RoundedCornerShape(12.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.RocketLaunch,
+                        contentDescription = null,
+                        modifier = Modifier.size(18.dp)
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(
+                        text = "Registrar Resultados de Hoje",
+                        fontWeight = FontWeight.Black,
+                        fontSize = 14.sp
+                    )
+                }
+
+                // Secondary Rules Button
+                Row(
+                    modifier = Modifier
+                        .clickable { onRulesClick() }
+                        .padding(8.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Help,
+                        contentDescription = null,
+                        tint = ElectricCyan,
+                        modifier = Modifier.size(14.dp)
+                    )
+                    Text(
+                        text = "Consultar Regras de Pontos",
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = ElectricCyan
+                    )
+                }
+            }
+        }
+
+        Spacer(modifier = Modifier.height(20.dp))
     }
 }

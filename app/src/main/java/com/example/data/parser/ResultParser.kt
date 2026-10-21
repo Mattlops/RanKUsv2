@@ -229,13 +229,13 @@ object ResultParser {
         val score = if (triesFound <= 2) {
             100
         } else {
-            max(10, 100 - ((triesFound - 2) * 3)).coerceIn(10, 100)
+            max(10, 100 - ((triesFound - 2) * 5)).coerceIn(10, 100)
         }
 
         val formula = if (triesFound <= 2) {
             "Tentativas ≤ 2 → 100 pts garantidos!"
         } else {
-            "100 - (($triesFound - 2) × 3) = $score pts (piso mín. 10 pts)"
+            "100 - (($triesFound - 2) × 5) = $score pts (piso mín. 10 pts na 20ª tentativa)"
         }
 
         val details = buildString {

@@ -629,11 +629,25 @@ fun generateShareCardBitmap(
         else -> "🫪 N fiz"
     }
 
-    // SizeItUp Result Text
+    // SizeItUp Result Text (Displays original Overall Score, not scaled RanKUs score)
     val sizeitupText = when {
         sizeitupScore == null && (sizeitupGame == null || !sizeitupGame.isCompleted) -> "🫪 N fiz"
-        sizeitupScore != null -> "${sizeitupScore.score} pts"
-        sizeitupGame?.isCompleted == true -> "${sizeitupGame.points} pts"
+        sizeitupScore != null -> {
+            val originalScore = Regex("""Overall\s*Score[:\s]+(\d+)""", RegexOption.IGNORE_CASE)
+                .find(sizeitupScore.details)?.groupValues?.get(1)?.toIntOrNull()
+                ?: sizeitupScore.rawGrid.firstNotNullOfOrNull { line ->
+                    Regex("""Overall\s*Score[:\s]+(\d+)""", RegexOption.IGNORE_CASE)
+                        .find(line)?.groupValues?.get(1)?.toIntOrNull()
+                }
+                ?: Regex("""(\d{2,4})""").find(sizeitupScore.details)?.groupValues?.get(1)?.toIntOrNull()
+                ?: (sizeitupScore.score * 5)
+
+            "$originalScore pts"
+        }
+        sizeitupGame?.isCompleted == true -> {
+            val originalScore = sizeitupGame.points * 5
+            "$originalScore pts"
+        }
         else -> "🫪 N fiz"
     }
 

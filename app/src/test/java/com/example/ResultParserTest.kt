@@ -63,8 +63,23 @@ class ResultParserTest {
         assertEquals(GameType.GLOBLE, result.gameType)
         assertEquals(2, result.streak)
         assertEquals(7, result.triesUsed)
-        // 100 - ((7 - 2) * 3) = 100 - 15 = 85
-        assertEquals(85, result.score)
+        // 100 - ((7 - 2) * 5) = 100 - 25 = 75
+        assertEquals(75, result.score)
+    }
+
+    @Test
+    fun testGlobleFloorAndTopScores() {
+        // 1 or 2 guesses = 100
+        val textTwo = "🌎 Oct 13, 2026 🌍\n🟩🟩 = 2\n#globle"
+        assertEquals(100, ResultParser.parseResult(textTwo).score)
+
+        // 20 guesses = 100 - (18 * 5) = 10
+        val textTwenty = "🌎 Oct 13, 2026 🌍\n🟨 = 20\n#globle"
+        assertEquals(10, ResultParser.parseResult(textTwenty).score)
+
+        // 25 guesses = floor 10
+        val textTwentyFive = "🌎 Oct 13, 2026 🌍\n🟨 = 25\n#globle"
+        assertEquals(10, ResultParser.parseResult(textTwentyFive).score)
     }
 
     @Test

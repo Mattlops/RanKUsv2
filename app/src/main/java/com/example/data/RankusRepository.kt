@@ -97,6 +97,10 @@ class RankusRepository(
     private val _players = MutableStateFlow<List<Player>>(emptyList())
     val players: StateFlow<List<Player>> = _players.asStateFlow()
 
+    // Ranking Visibility / Suspense Mode
+    private val _isRankingHidden = MutableStateFlow(prefs?.getBoolean("is_ranking_hidden", false) ?: false)
+    val isRankingHidden: StateFlow<Boolean> = _isRankingHidden.asStateFlow()
+
     // All Scores in the entire system (Cloud database + Local)
     private val _allScores = MutableStateFlow<List<ScoreHistoryItem>>(emptyList())
 
@@ -1169,6 +1173,57 @@ class RankusRepository(
 
                     refreshActiveUserScores(currentUid)
                 }
+            }
+
+        // 4. Real-time snapshot listener on app settings / ranking suspense mode
+        firestore.collection("config").document("app_settings")
+            .addSnapshotListener { snapshot, error ->
+                if (error != null) {
+                    handleFirestoreError(error, OperationType.GET, "config/app_settings")
+                    return@addSnapshotListener
+                }
+                if (snapshot != null && snapshot.exists()) {
+                    val hidden = snapshot.getBoolean("isRankingHidden") ?: false
+                    _isRankingHidden.value = hidden
+                    prefs?.edit()?.putBoolean("is_ranking_hidden", hidden)?.apply()
+                }
+            }
+    }
+
+    /**
+     * Checks if a user profile has administrator rights to toggle Suspense Mode.
+     * Admin: Matheus Lopes (google_matheus_lopes / WTFLopes / matheus_lopes@gmail.com / omatheuslops@gmail.com)
+     */
+    fun isUserAdmin(profile: UserProfile? = null): Boolean {
+        val user = profile ?: _currentUser.value
+        val hasAdminEmail = _registeredAccounts.any {
+            (it.id == user.id || it.nickname.equals(user.name, ignoreCase = true)) &&
+            (it.email.contains("matheus_lopes", ignoreCase = true) || it.email.contains("omatheuslops", ignoreCase = true))
+        }
+        return user.id == "google_matheus_lopes" ||
+               user.name.equals("WTFLopes", ignoreCase = true) ||
+               user.handle.contains("matheus_lopes", ignoreCase = true) ||
+               user.handle.contains("omatheuslops", ignoreCase = true) ||
+               user.handle.contains("WTFLopes", ignoreCase = true) ||
+               hasAdminEmail
+    }
+
+    /**
+     * Updates the Ranking visibility in local state, SharedPreferences, and Firestore.
+     */
+    fun setRankingHidden(hidden: Boolean) {
+        _isRankingHidden.value = hidden
+        prefs?.edit()?.putBoolean("is_ranking_hidden", hidden)?.apply()
+
+        val firestore = db ?: return
+        val data = mapOf(
+            "isRankingHidden" to hidden,
+            "updatedAt" to System.currentTimeMillis()
+        )
+        firestore.collection("config").document("app_settings")
+            .set(data)
+            .addOnFailureListener { error ->
+                handleFirestoreError(error, OperationType.UPDATE, "config/app_settings")
             }
     }
 }

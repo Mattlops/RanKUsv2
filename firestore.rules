@@ -95,5 +95,11 @@ service cloud.firestore {
       allow update: if incoming().diff(existing()).affectedKeys().hasOnly(['fireReactions', 'applauseReactions', 'targetReactions']);
       allow delete: if true;
     }
+
+    // App Config & Settings (Ranking suspense mode, etc.)
+    match /config/{configId} {
+      allow get, list: if true;
+      allow write: if true;
+    }
   }
 }

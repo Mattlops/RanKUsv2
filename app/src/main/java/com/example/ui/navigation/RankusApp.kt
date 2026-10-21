@@ -90,6 +90,8 @@ fun RankusApp(
     val activities by repository.activities.collectAsState()
     val players by repository.players.collectAsState()
     val scoreHistory by repository.scoreHistory.collectAsState()
+    val isRankingHidden by repository.isRankingHidden.collectAsState()
+    val isAdmin = remember(currentUser) { repository.isUserAdmin(currentUser) }
 
     when (appDestination) {
         AppDestination.SPLASH -> {
@@ -227,7 +229,10 @@ fun RankusApp(
                                         onCadastrarClick = {
                                             prefilledCadastrarText = null
                                             isCadastrarOpen = true
-                                        }
+                                        },
+                                        isAdmin = isAdmin,
+                                        isRankingHidden = isRankingHidden,
+                                        onToggleRankingHidden = { repository.setRankingHidden(it) }
                                     )
                                 }
 

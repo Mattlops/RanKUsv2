@@ -1,117 +1,116 @@
-# Compartilhar Meu Resultado (Resumo Diário) & Lembrete da Meia-Noite
+# Balanceamento do Globle & Modo Suspense do Administrador (Ranking Oculto)
 
-Implementação do botão de compartilhamento diário de resultados no menu Início após registrar pelo menos 1 jogo, gerando uma imagem gamer em alta definição (quadrada 1:1) com resumo completo dos 3 jogos diários (Termo, Globle e SizeItUp), ações para salvar na galeria e compartilhar nos apps, acompanhada da correção e ativação das notificações push diárias às 00h para o Lembrete da Meia-Noite.
+Implementação da nova fórmula de pontuação do Globle (-5 pontos por tentativa extra, garantindo piso de 10 pontos ao atingir 20 tentativas), atualização textual rigorosa de todas as menções para o nome oficial "Globle", e adição do recurso exclusivo de administrador para o jogador Matheus Lopes (`google_matheus_lopes`) com botão de alternância do "Modo Suspense" que sincroniza em tempo real via Firestore e exibe uma tela especial de sigilo/suspense para os demais competidores.
 
 ## User Review & Critical Decisions
 
 > [!IMPORTANT]
-> **Ajuste solicitado pelo usuário incorporado ao plano:**
-> Em vez de destacar apenas um jogo, o card de compartilhamento exibirá um **resumo dos 3 jogos diários** do usuário:
-> - **Termo:** Exibe quantas palavras acertou e em quantas tentativas (ex: *"4 palavras em 7 tentativas"*). Se o jogador não conseguiu decifrar alguma palavra, exibe *"🤡 Deu ruim"*.
-> - **Globle:** Exibe a quantidade de tentativas necessárias para acertar (ex: *"Acertou em 6 tentativas"*).
-> - **SizeItUp:** Exibe a pontuação total obtida no desafio (ex: *"92 pts"*).
-> - **Jogo Não Registrado:** Para qualquer jogo que o jogador ainda não tenha lançado no dia, exibe *"🫪 N fiz"*.
+> **Decisões confirmadas pelo usuário:**
+> - **Penalidade do Globle:** Confirmado **X = 5 pontos por palpite extra**. A fórmula oficial fica: `SE(Tentativas ≤ 2; 100; MÁXIMO(10; 100 - ((Tentativas - 2) × 5)))`. Assim, na 20ª tentativa a pontuação atinge exatamente o piso mínimo de 10 pontos.
+> - **Tela de Suspense dos Jogadores:** Quando o administrador ativar "Esconder Ranking", os demais jogadores que acessarem o menu Ranking verão uma **Tela de Suspense da Grande Final** temática ("🏆 Ranking Congelado!"), mantendo o engajamento e a contagem de pontos no escuro.
+> - **Atualização do APK para os amigos:**
+>   - **Mudanças no código/interface/cálculo:** Requerem que os amigos instalem o novo arquivo `.apk` gerado.
+>   - **Dados em nuvem (pontuações e o toggle de esconder ranking):** Sincronizam instantaneamente pela internet via Firestore, sem necessidade de reinstalar caso já estejam na versão compatível.
 
 ---
 
 ## 1. Overview & Core Concept
 
 - **O que faz:**
-  1. **Compartilhamento Diário:** Quando o jogador possui ao menos 1 jogo concluído no dia (`hasDailyScores == true`), surge o botão iluminado **"Compartilhar meu resultado"** no topo da seção "AÇÕES RÁPIDAS" na tela Início.
-  2. **Card Gamer Quadrado (1:1):** Ao tocar no botão, uma janela modal estilizada exibe a pré-visualização do card de resultados contendo:
-     - Foto de perfil à esquerda (circular com anel neon);
-     - Nome do jogador centralizado à direita e handle `@usuario`;
-     - Pontuação total do dia ("X pts hoje") e sequência atual ("🔥 X dias seguidos");
-     - **Resumo dos 3 Jogos:**
-       - 🟩 **Termo Quarteto:** "4 palavras em X tentativas" | se errou: "🤡 Deu ruim" | se não jogou: "🫪 N fiz"
-       - 🟦 **Globle:** "Acertou em X tentativas" | se não jogou: "🫪 N fiz"
-       - 🟪 **SizeItUp:** "X pts" | se não jogou: "🫪 N fiz"
-  3. **Ações do Card:**
-     - **Salvar imagem:** Faz o download diretamente na galeria do dispositivo (`Pictures/RanKUs`) com aviso toast de confirmação.
-     - **Compartilhar resultado:** Aciona a folha de compartilhamento nativa do Android (`Intent.ACTION_SEND` com `FileProvider`) para envio direto ao WhatsApp, Instagram, Twitter/X, Telegram, etc.
-  4. **Lembrete da Meia-Noite:**
-     - Solicita permissão `POST_NOTIFICATIONS` no Android 13+.
-     - Dispara notificação push imediata de confirmação ao ligar o switch.
-     - Agenda `AlarmManager` diário e persistente para disparar pontualmente às 00:00 todos os dias informando a virada dos novos desafios diários.
+  1. **Novo Cálculo e Regras do Globle:**
+     - 1 a 2 palpites: 100 pontos garantidos.
+     - A partir do 3º palpite: dedução de 5 pontos por tentativa adicional (`(tentativas - 2) * 5`).
+     - Piso garantido de 10 pontos (atingido exatamente aos 20 palpites).
+     - Atualização do painel explicativo de regras do app e da fórmula nos detalhes do resultado.
+  2. **Padronização do Nome Oficial "Globle":**
+     - Verificação completa para assegurar que nenhuma referência remanescente use "Globe" em regras, botões, modais ou mensagens.
+  3. **Painel de Administrador & Modo Suspense:**
+     - Identificação segura do administrador Matheus Lopes (`google_matheus_lopes` / `WTFLopes` / `matheus_lopes@gmail.com`).
+     - Banner exclusivo no topo da tela de Rankings com switch: **"Modo Suspense: Esconder Ranking"**.
+     - Sincronização em tempo real através do documento `config/app_settings` no Firestore.
+     - **Visão do Administrador:** Continua vendo o ranking real com status de alerta ativo.
+     - **Visão dos Demais Jogadores:** Visualizam uma tela especial com cadeado dourado, selo "MODO SUSPENSE ATIVADO" e mensagem informando que os resultados estão sob sigilo para a final da temporada, incentivando a continuarem pontuando normalmente.
 
 ---
 
 ## 2. User Experience & Visual Design
 
-### Fluxo do Usuário
-1. **Início (Home):**
-   - Caso `hasDailyScores == true`, o botão estilizado com brilho neon surge logo acima de "AÇÕES RÁPIDAS".
-   - O clique abre o modal translúcido com o preview em alta resolução e botões de ação na parte inferior.
-2. **Layout do Card Gerado (1080x1080px):**
-   - **Cabeçalho:** Identidade visual "RanKUs" com badge de data formatada ("19 OUT 2026").
-   - **Seção Superior:**
-     - Lado esquerdo: Avatar circular do jogador (com anel verde neon).
-     - Lado direito centralizado: Nome completo, handle e status.
-   - **Métricas Globais:** Banner horizontal com "PONTUAÇÃO HOJE" e "SEQUÊNCIA ATUAL".
-   - **Grid de Resumo dos Jogos:**
-     - Linhas dedicadas para cada jogo com seus respectivos ícones do menu Jogos:
-       - **Termo Quarteto** (Ícone verde): *4 palavras em 7 tentativas* / *🤡 Deu ruim* / *🫪 N fiz*
-       - **Globle** (Ícone globo ciano): *Acertou em 5 tentativas* / *🫪 N fiz*
-       - **SizeItUp** (Ícone régua violeta): *94 pts conquistados* / *🫪 N fiz*
-   - **Rodapé:** Assinatura do app e selo oficial de pontuação.
-3. **Menu Jogos - Lembrete da Meia-Noite:**
-   - Switch interativo com estado salvo em preferências locais.
-   - Ao ativar: confirmação imediata via push ("Lembrete ativado! Às 00h avisaremos dos novos jogos") e alarme recorrente às 00h00.
+### 1. Visual do Globle Atualizado
+- Na tela de **Cadastrar Resultado**, ao colar o resultado do Globle, a mensagem da fórmula exibirá claramente a nova matemática:
+  `100 - ((X - 2) × 5) = Y pts (piso mín. 10 pts na 20ª tentativa)`.
+- No card de **Regras de Pontuação** em Rankings, o item "Globle (Geografia)" exibirá as regras atualizadas com o novo multiplicador 5.
+
+### 2. Painel do Administrador (Para Matheus Lopes)
+- Card destacado com gradiente dourado escuro/âmbar `#231A0E` e borda `#FFA726`:
+  - Ícone de escudo/administrador (`Icons.Default.AdminPanelSettings` / `Security`).
+  - Título: **"Controle do Administrador"**.
+  - Switch: **"Modo Suspense (Esconder Ranking)"**.
+  - Legenda explicativa em tempo real:
+    - *Ativado:* "🔒 Ranking bloqueado para os jogadores. Eles estão visualizando a tela de suspense da Grande Final."
+    - *Desativado:* "🔓 Ranking público aberto para todos os jogadores."
+
+### 3. Tela de Suspense (Para os Demais Competidores)
+Quando `isRankingHidden == true` e o usuário não for o administrador:
+- Em vez da listagem de líderes, a aba Rankings renderiza uma tela imersiva de mistério:
+  - Escudo circular brilhante com cadeado de ouro em destaque (`TrophyGold` / `#FFD700`).
+  - Badge em neon: **"CLASSIFICAÇÃO EM SIGILO"**.
+  - Título imponente: **"🏆 Ranking Congelado para a Final!"**.
+  - Texto de imersão:
+    *"A tabela de classificação foi trancada pela administração nos dias decisivos da competição!\n\nOs resultados finais estão sob sigilo absoluto para coroar o grande campeão da temporada. Continue registrando seus jogos diários normalmente: todos os seus pontos continuam sendo computados no escuro!"*
+  - Card motivacional: *"Mantenha sua disciplina no Termo Quarteto, Globle e SizeItUp! O pódio será revelado no encerramento."*
+  - Botão de ação rápida: *"Jogar Agora"* e *"Registrar Resultado"*.
 
 ---
 
 ## 3. Key Product Decisions & Trade-Offs
 
-- **Tratamento de Estados dos Jogos no Card:**
-  - *Termo:* Extração estruturada a partir do `ScoreHistoryItem` ou `DailyGameStatus` de hoje. Se `score == 0` ou as tentativas estouraram sem 4 acertos, aplica *"🤡 Deu ruim"*. Se completado com sucesso, formata as tentativas e palavras.
-  - *Globle:* Identificação de tentativas a partir dos detalhes registrados (ex: 6 tentativas).
-  - *SizeItUp:* Exibição clara dos pontos obtidos na partida de hoje.
-  - *Não Registrado:* Se o jogo não possui registro hoje, preenche de forma padronizada com *"🫪 N fiz"*.
-- **Geração de Imagem com Canvas Nativo:**
-  - Renderização direta em `android.graphics.Bitmap` garantindo proporção exata 1080x1080px, nítida para redes sociais e independente do formato de tela do celular.
-- **Exportação e Compartilhamento:**
-  - `MediaStore.Images.Media` para download local limpo na galeria.
-  - `androidx.core.content.FileProvider` para compartilhamento via `Intent.ACTION_SEND`.
+- **Sincronização do Status via Firestore (`config/app_settings`):**
+  - *Decisão:* Armazenar `isRankingHidden` em um documento central no Firestore com snapshot listener em tempo real.
+  - *Vantagem:* Quando Matheus Lopes ativar ou desativar o Modo Suspense pelo celular dele, a alteração se propaga instantaneamente para os celulares de todos os competidores em segundos, sem necessidade de nova versão.
+- **Transparência de Permissões e Fallback:**
+  - Além de Firestore, o estado é mantido em cache local no `SharedPreferences` para garantir funcionamento offline imediato sem telas brancas.
+- **Acesso do Administrador Preservado:**
+  - O administrador nunca perde o acesso visual ao ranking real. Apenas os outros jogadores são direcionados para a tela de suspense.
 
 ---
 
 ## 4. Technical Architecture & Data Strategy
 
 ```
-┌────────────────────────────────────────────────────────┐
-│                      HomeScreen                        │
-│   (hasDailyScores == true -> Exibe botão Compartilhar) │
-└──────────────────────────┬─────────────────────────────┘
-                           │ Abre Modal
-                           ▼
-┌────────────────────────────────────────────────────────┐
-│             ShareResultDialog / Overlay                │
-│  - Avalia status dos 3 jogos (Termo, Globle, SizeItUp) │
-│  - Renderiza Bitmap 1080x1080 com Canvas nativo:       │
-│    • Avatar + Nome centralizado                        │
-│    • Total hoje + Sequência de dias                    │
-│    • Resumo Termo (Acertos/Tentativas | 🤡 | 🫪)       │
-│    • Resumo Globle (Tentativas | 🫪)                   │
-│    • Resumo SizeItUp (Pontuação total | 🫪)            │
-│  - Botão "Salvar imagem" ──> MediaStore (Galeria)      │
-│  - Botão "Compartilhar"  ──> FileProvider + Intent     │
-└────────────────────────────────────────────────────────┘
-
-┌────────────────────────────────────────────────────────┐
-│              JogosScreen / MidnightReminder            │
-│  - Switch "Lembrete da Meia-Noite"                     │
-│  - Preferences: "midnight_reminder_enabled"            │
-│  - Request Permission: POST_NOTIFICATIONS              │
-│  - Agendador: MidnightReminderScheduler                │
-│       └── AlarmManager -> MidnightReminderReceiver     │
-│       └── NotificationManager (Canal "rankus_midnight")│
-└────────────────────────────────────────────────────────┘
+┌──────────────────────────────────────────────────────────────┐
+│                    RankusRepository                          │
+│  - isRankingHidden: StateFlow<Boolean>                       │
+│  - setRankingHidden(hidden: Boolean): Writes to Firestore    │
+│  - Snapshot Listener: /config/app_settings                   │
+└──────────────────────────────┬───────────────────────────────┘
+                               │
+                ┌──────────────┴──────────────┐
+                ▼                             ▼
+┌──────────────────────────────┐ ┌──────────────────────────────┐
+│        Administrador         │ │       Demais Jogadores       │
+│  (google_matheus_lopes)      │ │        (Competidores)        │
+├──────────────────────────────┤ ├──────────────────────────────┤
+│ - Vê Banner de Controle Admin│ │ - isRankingHidden == true:   │
+│ - Toggle Liga/Desliga        │ │   Exibe Tela de Suspense     │
+│ - Continua vendo o Ranking   │ │   "Ranking Congelado!"       │
+└──────────────────────────────┘ └──────────────────────────────┘
 ```
 
 ### Arquivos Envolvidos na Execução:
-1. `app/src/main/AndroidManifest.xml`: Permissões (`POST_NOTIFICATIONS`), `FileProvider` e `MidnightReminderReceiver`.
-2. `app/src/main/res/xml/file_paths.xml`: Configuração de caminhos do `FileProvider`.
-3. `com.example.service.MidnightReminderService.kt`: Agendamento de alarme diário às 00:00 e disparador de notificações push.
-4. `com.example.ui.components.ShareResultCard.kt`: Criação do Bitmap gráfico (1080x1080) com os detalhes dos 3 jogos e modal de compartilhamento.
-5. `app/src/main/java/com/example/ui/screens/HomeScreen.kt`: Inclusão do botão acima de "AÇÕES RÁPIDAS" e chamada do modal.
-6. `app/src/main/java/com/example/ui/screens/JogosScreen.kt`: Conexão do switch com o serviço de alarme e persistência.
+1. `app/src/main/java/com/example/data/parser/ResultParser.kt`:
+   - Atualizar a fórmula de pontuação do Globle: `max(10, 100 - ((triesFound - 2) * 5))`.
+   - Atualizar `formulaDisplay` e mensagens de cálculo.
+2. `app/src/test/java/com/example/ResultParserTest.kt`:
+   - Atualizar o teste de pontuação do Globle para refletir a nova regra com 7 tentativas (75 pontos).
+3. `firestore.rules`:
+   - Adicionar regra de leitura e gravação da coleção `/config/{configId}`.
+   - Publicar regras atualizadas com `DeployRules`.
+4. `app/src/main/java/com/example/data/RankusRepository.kt`:
+   - Adicionar `isRankingHidden: StateFlow<Boolean>` com listener no Firestore `/config/app_settings`.
+   - Adicionar método `setRankingHidden(hidden: Boolean)`.
+5. `app/src/main/java/com/example/ui/screens/RankingsScreen.kt`:
+   - Atualizar a seção descritiva de regras do Globle (multiplicador 5 e 20 tentativas).
+   - Adicionar verificação de administrador (`isAdmin`).
+   - Adicionar banner de controle do Modo Suspense para o administrador.
+   - Adicionar componente Composable `SuspenseRankingScreen` exibido para usuários comuns quando o ranking estiver oculto.
+6. Recompilação do applet e geração do novo APK (`rankus.apk`).

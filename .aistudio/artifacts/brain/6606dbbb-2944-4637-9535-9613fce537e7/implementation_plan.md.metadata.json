@@ -1,6 +1,6 @@
 {
-  "summary": "Plano revisado com o resumo dos 3 jogos no card de compartilhamento: Termo (ex: 4 palavras em 7 tentativas, ou '🤡 Deu ruim' se não acertou), Globle (ex: Acertou em 6 tentativas), SizeItUp (pontuação total), e '🫪 N fiz' para jogos não registrados no dia; mantendo as opções de Salvar na galeria, Compartilhar via apps e a notificação da meia-noite às 00h.",
-  "updatedAt": "2026-10-20T06:47:53.456779061Z",
-  "requestFeedback": true,
-  "userFacing": true
+  "summary":  "Plano de implementação para o balanceamento de pontos do Globle (X = 5 pontos por palpite extra, piso de 10 pts em 20 tentativas), padronização rigorosa do nome 'Globle', esclarecimento sobre a distribuição do novo APK para amigos, e criação do Modo Suspense de administrador para esconder o ranking com tela de suspense para os demais jogadores sincronizada em tempo real via Firestore.",
+  "updatedAt":  "2026-10-21T20:27:13.801906593Z",
+  "requestFeedback":  true,
+  "userFacing":  true
 }
