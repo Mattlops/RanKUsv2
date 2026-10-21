@@ -204,6 +204,7 @@ fun RankusApp(
                                         userProfile = currentUser,
                                         dailyGames = dailyGames,
                                         activities = activities,
+                                        scoreHistory = scoreHistory,
                                         hasDailyScores = hasDailyScores,
                                         onNavigateToCadastrar = { clipText ->
                                             prefilledCadastrarText = clipText

@@ -74,7 +74,9 @@ import com.example.data.models.ActivityFeedItem
 import com.example.data.models.DailyGameStatus
 import com.example.data.models.GameType
 import com.example.data.models.Player
+import com.example.data.models.ScoreHistoryItem
 import com.example.data.models.UserProfile
+import com.example.ui.components.ShareResultModal
 import com.example.ui.theme.DarkBgBase
 import com.example.ui.theme.DarkBgSurface
 import com.example.ui.theme.ElectricCyan
@@ -101,6 +103,7 @@ fun HomeScreen(
     dailyGames: List<DailyGameStatus>,
     activities: List<ActivityFeedItem>,
     players: List<Player> = emptyList(),
+    scoreHistory: List<ScoreHistoryItem> = emptyList(),
     hasDailyScores: Boolean = false,
     onNavigateToCadastrar: (String?) -> Unit,
     onNavigateToRankings: () -> Unit,
@@ -110,6 +113,11 @@ fun HomeScreen(
 ) {
     val context = LocalContext.current
     var showEmptyState by remember(hasDailyScores) { mutableStateOf(!hasDailyScores) }
+    var isShareModalOpen by remember { mutableStateOf(false) }
+
+    val hasAnyScoreToday = remember(hasDailyScores, dailyGames, scoreHistory) {
+        hasDailyScores || dailyGames.any { it.isCompleted } || scoreHistory.any { it.isToday }
+    }
 
     LazyColumn(
         modifier = modifier
@@ -160,6 +168,14 @@ fun HomeScreen(
                 HeroGreetingCard(userProfile = userProfile)
             }
 
+            if (hasAnyScoreToday) {
+                item {
+                    ShareResultQuickButton(
+                        onClick = { isShareModalOpen = true }
+                    )
+                }
+            }
+
             item {
                 QuickActionsBento(
                     onCadastrar = { onNavigateToCadastrar(null) },
@@ -199,6 +215,15 @@ fun HomeScreen(
         item {
             Spacer(modifier = Modifier.height(16.dp))
         }
+    }
+
+    if (isShareModalOpen) {
+        ShareResultModal(
+            userProfile = userProfile,
+            dailyGames = dailyGames,
+            scoreHistory = scoreHistory,
+            onDismiss = { isShareModalOpen = false }
+        )
     }
 }
 
@@ -316,6 +341,96 @@ private fun HeroGreetingCard(userProfile: UserProfile) {
                     }
                 }
             }
+        }
+    }
+}
+
+@Composable
+private fun ShareResultQuickButton(
+    onClick: () -> Unit
+) {
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(16.dp))
+            .background(
+                Brush.horizontalGradient(
+                    listOf(
+                        NeonGreen.copy(alpha = 0.22f),
+                        ElectricCyan.copy(alpha = 0.15f),
+                        SurfaceContainer
+                    )
+                )
+            )
+            .border(
+                1.5.dp,
+                Brush.horizontalGradient(
+                    listOf(NeonGreen, ElectricCyan)
+                ),
+                RoundedCornerShape(16.dp)
+            )
+            .clickable { onClick() }
+            .padding(horizontal = 16.dp, vertical = 14.dp)
+            .testTag("share_my_result_hero_btn")
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween
+        ) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Box(
+                    modifier = Modifier
+                        .size(44.dp)
+                        .clip(RoundedCornerShape(12.dp))
+                        .background(NeonGreenContainer),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Share,
+                        contentDescription = null,
+                        tint = NeonGreenDark,
+                        modifier = Modifier.size(22.dp)
+                    )
+                }
+                Spacer(modifier = Modifier.width(12.dp))
+                Column {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text(
+                            text = "Compartilhar meu resultado",
+                            fontSize = 15.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = TextPrimary
+                        )
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Box(
+                            modifier = Modifier
+                                .clip(RoundedCornerShape(4.dp))
+                                .background(NeonGreen.copy(alpha = 0.2f))
+                                .padding(horizontal = 5.dp, vertical = 2.dp)
+                        ) {
+                            Text(
+                                text = "HOJE",
+                                fontSize = 9.sp,
+                                fontWeight = FontWeight.Black,
+                                color = NeonGreen
+                            )
+                        }
+                    }
+                    Text(
+                        text = "Gere seu card gamer e compartilhe com os amigos",
+                        fontSize = 11.sp,
+                        color = TextSecondary
+                    )
+                }
+            }
+
+            Icon(
+                imageVector = Icons.AutoMirrored.Filled.ArrowForwardIos,
+                contentDescription = null,
+                tint = NeonGreen,
+                modifier = Modifier.size(16.dp)
+            )
         }
     }
 }

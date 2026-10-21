@@ -1,7 +1,15 @@
 package com.example.ui.screens
 
+import android.Manifest
 import android.content.Intent
+import android.content.pm.PackageManager
 import android.net.Uri
+import android.os.Build
+import android.widget.Toast
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.core.content.ContextCompat
+import com.example.service.MidnightReminderScheduler
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -77,7 +85,27 @@ fun JogosScreen(
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
-    var midnightReminderEnabled by remember { mutableStateOf(true) }
+    var midnightReminderEnabled by remember {
+        mutableStateOf(MidnightReminderScheduler.isReminderEnabled(context))
+    }
+
+    val notificationPermissionLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestPermission()
+    ) { isGranted ->
+        if (isGranted) {
+            MidnightReminderScheduler.setReminderEnabled(context, true)
+            midnightReminderEnabled = true
+            Toast.makeText(context, "Lembrete da meia-noite ativado!", Toast.LENGTH_SHORT).show()
+        } else {
+            Toast.makeText(
+                context,
+                "Permissão de notificação necessária para o lembrete.",
+                Toast.LENGTH_LONG
+            ).show()
+            midnightReminderEnabled = false
+            MidnightReminderScheduler.setReminderEnabled(context, false)
+        }
+    }
 
     fun openUrl(url: String) {
         val intent = Intent(Intent.ACTION_VIEW, Uri.parse(url))
@@ -480,13 +508,39 @@ fun JogosScreen(
 
                 Switch(
                     checked = midnightReminderEnabled,
-                    onCheckedChange = { midnightReminderEnabled = it },
+                    onCheckedChange = { enable ->
+                        if (enable) {
+                            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                                val hasPermission = ContextCompat.checkSelfPermission(
+                                    context,
+                                    Manifest.permission.POST_NOTIFICATIONS
+                                ) == PackageManager.PERMISSION_GRANTED
+
+                                if (!hasPermission) {
+                                    notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+                                } else {
+                                    MidnightReminderScheduler.setReminderEnabled(context, true)
+                                    midnightReminderEnabled = true
+                                    Toast.makeText(context, "Lembrete da meia-noite ativado!", Toast.LENGTH_SHORT).show()
+                                }
+                            } else {
+                                MidnightReminderScheduler.setReminderEnabled(context, true)
+                                midnightReminderEnabled = true
+                                Toast.makeText(context, "Lembrete da meia-noite ativado!", Toast.LENGTH_SHORT).show()
+                            }
+                        } else {
+                            MidnightReminderScheduler.setReminderEnabled(context, false)
+                            midnightReminderEnabled = false
+                            Toast.makeText(context, "Lembrete da meia-noite desativado.", Toast.LENGTH_SHORT).show()
+                        }
+                    },
                     colors = SwitchDefaults.colors(
                         checkedThumbColor = NeonGreenDark,
                         checkedTrackColor = NeonGreenContainer,
                         uncheckedThumbColor = TextSecondary,
                         uncheckedTrackColor = SurfaceContainerHigh
-                    )
+                    ),
+                    modifier = Modifier.testTag("midnight_reminder_switch")
                 )
             }
         }
